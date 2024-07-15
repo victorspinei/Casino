@@ -29,6 +29,10 @@ Casino::Casino(SDL_Renderer *_renderer, std::vector<std::string> &symbol_names, 
     image_destRect.x = 0;
     image_destRect.y = 0;
 
+
+    reel_destRect.w = 130;
+    reel_destRect.h = 130;
+
     current_screen = 0;
 
     init_reels();
@@ -39,6 +43,7 @@ Casino::Casino(SDL_Renderer *_renderer, std::vector<std::string> &symbol_names, 
     buttons.push_back({1220, 30, 35, 35});
     buttons.push_back({110, 610, 90, 0});
 
+    is_spinning = false;
 }
 Casino::~Casino() {
     for (auto &symbol : symbols)
@@ -56,12 +61,24 @@ void Casino::init_reels() {
 }
 
 void Casino::spin_reels() {
-    for (int r = 0; r < 3; r++) {
-        for (int c = 0; c < 5; c++) {
-            reels[r][c] = symbols[randomNumberGenerator(height-1)];
+    if (!is_spinning) {
+        is_spinning = true;
+        spin_start_time = std::chrono::steady_clock::now();
+
+        reel_start_times.clear();
+        reel_durations.clear();
+
+        for (int r = 0; r < 3; r++) {
+            reel_start_times.push_back(randomNumberGenerator(500)); // Delay before spinning each reel (in ms)
+            reel_durations.push_back(1000 + randomNumberGenerator(1000)); // Duration each reel spins (in ms)
+        }
+
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 5; c++) {
+                reels[r][c] = symbols[randomNumberGenerator(height - 1)];
+            }
         }
     }
-    spin_animation();
 }
 
 int Casino::evaluate_pay_lines(int bet) {
@@ -85,23 +102,52 @@ int Casino::evaluate_pay_lines(int bet) {
 }
 
 void Casino::render() {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
     image_srcRect.x = current_screen * (1320);
     TextureManger::Draw(renderer, background_image, image_srcRect, image_destRect);
 
-    //SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    // SDL_RenderDrawRect(renderer, &buttons[menu_button]);
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    //SDL_RenderDrawRect(renderer, &test);
 
-    //SDL_RenderDrawLine(renderer, buttons[spin_button].x - buttons[spin_button].w, buttons[spin_button].y , buttons[spin_button].x + buttons[spin_button].w, buttons[spin_button].y);
-    //SDL_RenderDrawLine(renderer, buttons[spin_button].x, buttons[spin_button].y  - buttons[spin_button].w, buttons[spin_button].x, buttons[spin_button].y + buttons[spin_button].w);
+    SDL_Rect symbol_srcRect = {0, 0, 800, 800};
+    if (current_screen == 0)
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 5; c++) {
+                SDL_Rect symbol_destRect = {277 + c * 150, 140 + r * 150, 130, 130};
+                TextureManger::Draw(renderer, reels[r][c].texture, symbol_srcRect, symbol_destRect);
+            }
+        }
 
+    spin_animation();
     SDL_RenderPresent(renderer);
 }
 
 
 void Casino::spin_animation() {
-    // TODO: add spinning animation
+    if (is_spinning) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - spin_start_time).count();
+
+        bool all_reels_stopped = true;
+        for (int r = 0; r < 3; r++) {
+            if (elapsed >= reel_start_times[r] && elapsed < reel_start_times[r] + reel_durations[r]) {
+                all_reels_stopped = false;
+
+                // Update reel positions based on the elapsed time
+                int shift_amount = (elapsed - reel_start_times[r]) / 100 % height;
+                for (int c = 0; c < 5; c++) {
+                    int symbol_index = (c + shift_amount) % height;
+                    reels[r][c] = symbols[symbol_index];
+                }
+            }
+        }
+
+        if (all_reels_stopped) {
+            is_spinning = false;
+        }
+    }
 }
 
 void Casino::handle_click(int x, int y) {
@@ -123,6 +169,6 @@ void Casino::handle_click(int x, int y) {
             abs(y - buttons[spin_button].y) <= buttons[spin_button].w &&
             abs(x - buttons[spin_button].x) + abs(y  - buttons[spin_button].y <= buttons[spin_button].w)
             )
-            std::cout << "spin\n";
+            spin_reels();
     }
 }

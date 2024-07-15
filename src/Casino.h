@@ -6,6 +6,7 @@
 #include <utility>
 #include <string>
 #include <random>
+#include <chrono>
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -40,21 +41,18 @@ class Casino {
 public:
     Casino(SDL_Renderer *_renderer, std::vector<std::string> &symbol_names, const std::vector<std::vector<int>> &lines);
     ~Casino();
-
     void render();
-
     void spin_animation();
-
     void spin_reels();
     void init_reels();
     int evaluate_pay_lines(int bet);
-
     void handle_click(int x, int y);
 
     bool running;
     SDL_Renderer *renderer;
 
     int current_screen;
+
 private:
     int width, height;
 
@@ -62,9 +60,14 @@ private:
 
     SDL_Rect image_srcRect;
     SDL_Rect image_destRect;
+    SDL_Rect reel_destRect;
 
     std::vector<SDL_Rect> buttons;
 
+    bool is_spinning;
+    std::vector<int> reel_start_times;
+    std::vector<int> reel_durations;
+    std::chrono::steady_clock::time_point spin_start_time;
 
     std::vector<std::vector<Symbol>> reels;
     std::vector<Symbol> symbols;

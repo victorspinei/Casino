@@ -40,7 +40,6 @@ int main() {
         SDL_Event e;
 
 
-        casino->render();
         if (SDL_QuitRequested()) {
             casino->running = false;
             break;
@@ -64,6 +63,7 @@ int main() {
 
             }
         }
+        casino->render();
     }
 
     delete casino;
